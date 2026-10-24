@@ -48,7 +48,7 @@ function Player() {
   const [liked, setLiked] = useState<Set<number>>(new Set([0, 2]));
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState(false);
-  const track = tracks[current];
+  const track = tracks[current] ?? tracks[0]!;
 
   useEffect(() => {
     if (!playing) return;
@@ -97,7 +97,7 @@ function Player() {
             <div className="scrollbar-thin -mx-2 flex-1 overflow-y-auto">
               {playlists.map((p, i) => (
                 <button key={p} className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-surface-hover">
-                  <img src={tracks[i % 4].cover} alt="" className="h-11 w-11 rounded-md object-cover" loading="lazy" />
+                  <img src={tracks[i % 4]!.cover} alt="" className="h-11 w-11 rounded-md object-cover" loading="lazy" />
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold">{p}</div>
                     <div className="truncate text-xs text-muted-foreground">Playlist • {12 + i * 7} músicas</div>
@@ -205,7 +205,7 @@ function Player() {
             <p className="mb-3 text-sm font-bold">A seguir</p>
             {[1, 2, 3].map((o) => {
               const idx = (current + o) % tracks.length;
-              const t = tracks[idx];
+              const t = tracks[idx]!;
               return (
                 <button key={o} onClick={() => play(idx)} className="flex w-full items-center gap-3 rounded-md p-1.5 text-left hover:bg-surface-hover">
                   <img src={t.cover} alt="" className="h-10 w-10 rounded object-cover" loading="lazy" />
