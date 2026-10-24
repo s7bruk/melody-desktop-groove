@@ -12,6 +12,8 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { PlayerProvider } from "@/components/player/PlayerContext";
+import { Shell } from "@/components/player/Shell";
 
 function NotFoundComponent() {
   return (
@@ -122,7 +124,9 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <PlayerProvider>
+        <Shell />
+      </PlayerProvider>
     </QueryClientProvider>
   );
 }
