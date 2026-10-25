@@ -1,9 +1,9 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
   Home, Search, Library, Radio, Plus, Play, Pause, SkipBack, SkipForward, Shuffle, Repeat,
-  Volume2, ListMusic, Mic2, MonitorSpeaker, Maximize2, ChevronDown,
+  Volume2, ListMusic, Mic2, Maximize2, ChevronDown,
 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { albumOf, albums, fmt, lyrics, playlists } from "@/lib/music-data";
 import { usePlayer } from "./PlayerContext";
 import { Equalizer, LikeButton, Slider } from "./ui";
@@ -19,84 +19,110 @@ export function Shell() {
   const p = usePlayer();
   const album = albumOf(p.track);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [queueOpen, setQueueOpen] = useState(false);
+  const pct = (p.progress / p.track.duration) * 100;
 
   return (
-    <div className="flex h-screen min-w-[1100px] flex-col overflow-hidden bg-background text-foreground">
-      <div className="flex min-h-0 flex-1 gap-2 p-2">
-        <aside className="flex w-64 shrink-0 flex-col gap-2">
-          <nav className="rounded-xl bg-surface p-4">
-            <div className="mb-5 flex items-center gap-2 px-2">
-              <div className="animate-spin-slow h-7 w-7 rounded-full bg-gradient-primary" />
-              <span className="font-display text-xl font-bold tracking-tight">Aura</span>
-            </div>
-            {nav.map(({ to, label, icon: Icon }) => (
-              <Link
-                key={to} to={to} activeOptions={{ exact: to === "/" }}
-                className="relative flex items-center gap-4 rounded-md px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground data-[status=active]:bg-surface-hover data-[status=active]:text-foreground"
-              >
-                <Icon className="h-5 w-5" /> {label}
-              </Link>
-            ))}
-          </nav>
-          <div className="flex min-h-0 flex-1 flex-col rounded-xl bg-surface p-4">
-            <div className="mb-3 flex items-center justify-between px-2 text-muted-foreground">
-              <span className="text-sm font-semibold">Playlists</span>
-              <button className="rounded-full p-1 transition-transform hover:rotate-90 hover:bg-surface-hover hover:text-foreground"><Plus className="h-4 w-4" /></button>
-            </div>
-            <div className="scrollbar-thin -mx-2 flex-1 overflow-y-auto">
-              {playlists.map((pl) => (
-                <Link key={pl.name} to="/biblioteca" className="flex items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-surface-hover">
-                  <img src={pl.cover} alt="" className="h-11 w-11 rounded-md object-cover" loading="lazy" />
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold">{pl.name}</div>
-                    <div className="truncate text-xs text-muted-foreground">Playlist • {pl.count} músicas</div>
-                  </div>
-                </Link>
-              ))}
-              <div className="mt-3 border-t pt-3">
-                {albums.map((a) => (
-                  <Link key={a.id} to="/album/$id" params={{ id: a.id }} className="flex items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-surface-hover">
-                    <img src={a.cover} alt="" className="h-11 w-11 rounded-md object-cover" loading="lazy" />
-                    <div className="min-w-0">
-                      <div className={`truncate text-sm font-semibold ${album.id === a.id ? "text-primary" : ""}`}>{a.title}</div>
-                      <div className="truncate text-xs text-muted-foreground">Álbum • {a.artist}</div>
-                    </div>
-                    {album.id === a.id && p.playing && <Equalizer className="ml-auto" />}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
+    <div className="relative flex h-screen min-w-[1100px] flex-col overflow-hidden bg-background text-foreground">
+      <div key={album.id} className="animate-ambient pointer-events-none absolute -inset-1/4 opacity-25 blur-[120px]" style={{ backgroundImage: `url(${album.cover})`, backgroundSize: "cover" }} />
+
+      {/* Top bar */}
+      <header className="relative z-20 flex shrink-0 items-center gap-6 px-8 py-4">
+        <Link to="/" className="flex items-center gap-2">
+          <div className={`h-8 w-8 rounded-full bg-gradient-primary ${p.playing ? "animate-spin-slow" : ""}`} />
+          <span className="font-display text-2xl font-extrabold tracking-tight">Aura</span>
+        </Link>
+        <nav className="glass mx-auto flex items-center gap-1 rounded-full p-1">
+          {nav.map(({ to, label, icon: Icon }) => (
+            <Link
+              key={to} to={to} activeOptions={{ exact: to === "/" }}
+              className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-muted-foreground transition-all hover:text-foreground data-[status=active]:bg-foreground data-[status=active]:text-background"
+            >
+              <Icon className="h-4 w-4" /> {label}
+            </Link>
+          ))}
+        </nav>
+        <button onClick={() => setQueueOpen((o) => !o)} className={`glass flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${queueOpen ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+          <ListMusic className="h-4 w-4" /> Fila
+        </button>
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-primary text-sm font-bold text-primary-foreground">A</div>
+      </header>
+
+      <div className="relative flex min-h-0 flex-1">
+        {/* Album rail */}
+        <aside className="flex w-20 shrink-0 flex-col items-center gap-3 py-4">
+          {[...playlists.map((pl) => ({ key: pl.name, cover: pl.cover, label: pl.name, to: "/biblioteca" as const, id: "" })), ...albums.map((a) => ({ key: a.id, cover: a.cover, label: a.title, to: "/album/$id" as const, id: a.id }))].map((it, i) => (
+            <Link
+              key={it.key} to={it.to} params={{ id: it.id }} title={it.label}
+              className="animate-fade-up group relative"
+              style={{ animationDelay: `${i * 40}ms` }}
+            >
+              <img src={it.cover} alt={it.label} loading="lazy" className={`h-12 w-12 object-cover shadow-cover transition-all duration-300 group-hover:rounded-xl ${it.id === album.id ? "rounded-xl ring-2 ring-primary" : "rounded-3xl"}`} />
+              <span className="pointer-events-none absolute left-16 top-1/2 z-30 -translate-y-1/2 whitespace-nowrap rounded-md bg-popover px-2 py-1 text-xs font-semibold opacity-0 transition-opacity group-hover:opacity-100">{it.label}</span>
+            </Link>
+          ))}
+          <button className="flex h-12 w-12 items-center justify-center rounded-3xl border border-dashed text-muted-foreground transition-all hover:rounded-xl hover:text-primary"><Plus className="h-5 w-5" /></button>
         </aside>
 
-        <main className="scrollbar-thin relative min-w-0 flex-1 overflow-y-auto rounded-xl bg-surface">
+        <main className="scrollbar-thin relative min-w-0 flex-1 overflow-y-auto rounded-tl-3xl bg-surface/80 pb-32">
           <div key={pathname} className="animate-page-in min-h-full">
             <Outlet />
           </div>
         </main>
+
+        {/* Queue drawer */}
+        <aside className={`shrink-0 overflow-hidden bg-surface/80 transition-all duration-500 ${queueOpen ? "w-80 border-l" : "w-0"}`}>
+          <div className="w-80 p-5 pb-32">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Tocando</p>
+            <div className="mb-6 flex items-center gap-3">
+              <img src={album.cover} alt="" className="h-14 w-14 rounded-md object-cover" />
+              <div className="min-w-0"><div className="truncate font-semibold text-primary">{p.track.title}</div><div className="truncate text-sm text-muted-foreground">{album.artist}</div></div>
+              {p.playing && <Equalizer className="ml-auto" />}
+            </div>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">A seguir</p>
+            {p.queue.slice(0, 10).map((t) => {
+              const a = albumOf(t);
+              return (
+                <button key={t.id} onClick={() => p.playTrack(t)} className="flex w-full items-center gap-3 rounded-md p-1.5 text-left transition-colors hover:bg-surface-hover">
+                  <img src={a.cover} alt="" className="h-10 w-10 rounded object-cover" loading="lazy" />
+                  <div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{t.title}</div><div className="truncate text-xs text-muted-foreground">{a.artist}</div></div>
+                  <span className="text-xs tabular-nums text-muted-foreground">{fmt(t.duration)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
       </div>
 
-      <footer className="grid h-20 shrink-0 grid-cols-[1fr_2fr_1fr] items-center px-4">
+      {/* Floating player */}
+      <footer className="glass absolute bottom-5 left-1/2 z-30 grid w-[min(1000px,calc(100%-3rem))] -translate-x-1/2 grid-cols-[1fr_auto_1fr] items-center gap-6 overflow-hidden rounded-full border py-2.5 pl-2.5 pr-6 shadow-cover">
+        <span className="absolute inset-x-0 bottom-0 h-0.5 bg-primary transition-all duration-1000 ease-linear" style={{ width: `${pct}%` }} />
         <div className="flex min-w-0 items-center gap-3">
-          <button onClick={() => p.setFullscreen(true)} className="group relative shrink-0">
-            <img key={album.id} src={album.cover} alt="" className="animate-scale-in h-14 w-14 rounded-md object-cover" />
-            <span className="absolute inset-0 flex items-center justify-center rounded-md bg-background/60 opacity-0 transition-opacity group-hover:opacity-100">
-              <Maximize2 className="h-4 w-4" />
-            </span>
+          <button onClick={() => p.setFullscreen(true)} className="group relative shrink-0" aria-label="Tela cheia">
+            <img key={album.id} src={album.cover} alt="" className={`h-14 w-14 rounded-full object-cover ${p.playing ? "animate-spin-slow" : ""}`} />
+            <span className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-background" />
+            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-background/60 opacity-0 transition-opacity group-hover:opacity-100"><Maximize2 className="h-4 w-4" /></span>
           </button>
           <div key={p.track.id} className="animate-fade-up min-w-0">
             <div className="truncate text-sm font-semibold">{p.track.title}</div>
             <Link to="/album/$id" params={{ id: album.id }} className="truncate text-xs text-muted-foreground hover:underline">{album.artist}</Link>
           </div>
-          <span className="ml-2"><LikeButton id={p.track.id} /></span>
+          <span className="ml-1"><LikeButton id={p.track.id} /></span>
         </div>
-        <Controls />
+        <div className="flex items-center gap-5">
+          <button onClick={p.toggleShuffle} className={p.shuffle ? "text-primary" : "text-muted-foreground hover:text-foreground"}><Shuffle className="h-4 w-4" /></button>
+          <button onClick={p.prev} className="text-muted-foreground transition-transform hover:text-foreground active:scale-90"><SkipBack className="h-5 w-5 fill-current" /></button>
+          <button onClick={p.toggle} className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105 active:scale-95">
+            {p.playing ? <Pause className="h-5 w-5 fill-current" /> : <Play className="ml-0.5 h-5 w-5 fill-current" />}
+          </button>
+          <button onClick={p.next} className="text-muted-foreground transition-transform hover:text-foreground active:scale-90"><SkipForward className="h-5 w-5 fill-current" /></button>
+          <button onClick={p.toggleRepeat} className={p.repeat ? "text-primary" : "text-muted-foreground hover:text-foreground"}><Repeat className="h-4 w-4" /></button>
+        </div>
         <div className="flex items-center justify-end gap-4 text-muted-foreground">
-          <button onClick={() => p.setFullscreen(true)} className="hover:text-foreground"><Mic2 className="h-4 w-4" /></button>
-          <ListMusic className="h-4 w-4" />
-          <MonitorSpeaker className="h-4 w-4" />
+          <span className="text-xs tabular-nums">{fmt(p.progress)} / {fmt(p.track.duration)}</span>
+          <button onClick={() => p.setFullscreen(true)} className="hover:text-foreground" aria-label="Letra"><Mic2 className="h-4 w-4" /></button>
           <Volume2 className="h-4 w-4" />
-          <div className="w-28"><Slider value={p.volume} max={100} onChange={p.setVolume} /></div>
+          <div className="w-24"><Slider value={p.volume} max={100} onChange={p.setVolume} /></div>
         </div>
       </footer>
 

@@ -11,7 +11,6 @@ export function PageHeader({ children }: { children?: ReactNode }) {
         <button onClick={() => router.history.forward()} className="glass rounded-full p-1.5 transition-transform hover:scale-110"><ChevronRight className="h-5 w-5" /></button>
       </div>
       <div className="flex-1">{children}</div>
-      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-primary text-xs font-bold text-primary-foreground">A</div>
     </div>
   );
 }
